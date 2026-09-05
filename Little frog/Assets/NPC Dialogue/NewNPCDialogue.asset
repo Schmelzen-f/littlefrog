@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a8bccd8299570449977eb2df5350e82, type: 3}
+  m_Name: NewNPCDialogue
+  m_EditorClassIdentifier: 
+  npcName: Old Man
+  npcPortrait: {fileID: 6453561030650598409, guid: a04ff6718129674498ee84403da6e88b,
+    type: 3}
+  dialogueLines:
+  - Frist meet Izuku.
+  - GUGU GAGA
+  autoProgressLines: 0100
+  autoProgressDelay: 1.5
+  typingSpeed: 0.05
+  voiceSound: {fileID: 0}
+  voicePitch: 1
