@@ -1,206 +1,27 @@
-﻿/*using System;
+﻿
+
+using System.Collections;
 using System.Collections.Generic;
-using System.Net;
-using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Playables;
 
-public class Follow : MonoBehaviour
-{
 
-
-    private Transform player;
-    public float detectDistance = 5f;
-    public float speed = 3f;
-    private Vector3 start;
-
-    public float timer = 0f;
-    public float returnDelay = 2f;
-
-    public Transform[] points;
-    private int currentIndex = 0;
-    private float waitCounter = 0f;
-    public float waitTime = 2f;
-
-    private bool hasLineOfSight = false;
-    public LOSGenerator losGenerator;
-
-    Vector2 targetPoint;
-    List<Vector2> currentPoints;
-
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-
-
-
-        start = transform.position;
-
-
-        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
-
-        if (playerObject != null)
-        {
-            Debug.Log("đã tìm thấy game object có tag player và guarding");
-            player = playerObject.transform;
-
-
-        }
-        else
-        {
-            Debug.LogError("không tìm thấy player và guarding");
-
-        }
-
-
-
-
-
-
-    }
-    // Update is called once per frame
-    void Update()
-    {
-        if (player == null) return;
-
-
-        float Distance = Vector3.Distance(transform.position, player.position);
-
-
-
-        if(hasLineOfSight && Distance < detectDistance)
-        {
-            timer = 0f;
-            FollowPlayer();
-        }
-        else
-        {
-            timer += Time.deltaTime;
-
-            if (returnDelay < timer)
-            {
-                guarding();
-                //returnHome();
-            }
-        }
-
-    }
-
-    void FollowPlayer()
-    {
-
-
-        transform.position = Vector3.MoveTowards(transform.position, player.position, speed * Time.deltaTime);
-
-
-    }
-
-    void returnHome()
-    {
-        transform.position = Vector3.MoveTowards(transform.position, start, speed * Time.deltaTime);
-    }
-
-    /////////////////// đang nghiên cứu
-    Vector2 ChooseBestPoint(List<Vector2> points, Vector2 enemyPos, Vector2 playerVelocity)
-    {
-        Vector2 bestPoint = points[0];
-        float bestScore = float.MaxValue;
-
-        foreach (Vector2 p in points)
-        {
-            float dist = Vector2.Distance(enemyPos, p);
-
-            Vector2 dirToPoint = (p - enemyPos).normalized;
-            float dot = Vector2.Dot(dirToPoint, playerVelocity.normalized);
-
-            float score = dist - dot * 2f;
-
-            if (score < bestScore)
-            {
-                bestScore = score;
-                bestPoint = p;
-            }
-        }
-
-        return bestPoint;
-    }
-
-
-
-    ///////////////////////////////////////
-
-    void guarding()
-    {
-
-        float detectDistance = 0.1f;
-
-        Transform target = points[currentIndex];
-        float distance = Vector3.Distance(transform.position, target.position);
-
-        if (distance > detectDistance)
-        {
-            waitCounter = 0f; // réset nè
-
-
-            transform.position = Vector3.MoveTowards(
-                transform.position,
-                target.position,
-                speed * Time.deltaTime
-            );
-
-
-
-        }
-        else
-        {
-            waitCounter += Time.deltaTime; // đứng chờ
-
-            if (waitTime < waitCounter)
-            {
-                currentIndex++;
-
-                if (currentIndex >= points.Length)
-                    currentIndex = 0;
-            }
-
-        }
-
-
-    }
-
-
-
-    private void FixedUpdate()
-    {
-        RaycastHit2D ray = Physics2D.Raycast(transform.position, player.transform.position - transform.position);
-        if (ray.collider != null)
-        {
-            hasLineOfSight = ray.collider.CompareTag("Player");
-            if (hasLineOfSight)
-            {
-                Debug.DrawRay(transform.position, player.transform.position - transform.position, Color.green);
-            }
-            else
-            {
-                Debug.DrawRay(transform.position, player.transform.position - transform.position, Color.red);
-            }
-        }
-    }
-}*/
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//using NUnit.Framework;
-using System.Collections.Generic;
-//using UnityEditor.Experimental.GraphView;
-using UnityEngine;
-//using UnityEngine.SocialPlatforms.Impl;
 
 public class Follow : MonoBehaviour
 {
     private Transform player;
+
+    private Animator animator;
+    private Vector2 lastMoveDirection = Vector2.down;
+
+
+    private EnemyAttackBehaviour attackBehaviour;
+
+
 
     [Header("Detect")]
     public float detectDistance = 5f;
+    [SerializeField] private LayerMask lineOfSightMask;
 
     [Header("Speed")]
     public float patrolSpeed = 2f;
@@ -219,17 +40,18 @@ public class Follow : MonoBehaviour
     public float waitTime = 2f;
 
     private bool hasLineOfSight = false;
+    
 
-    public LOSGenerator losGenerator;
+    
     public NodeManager nodeManager;
     private Node targetNode;
     public LayerMask obstacleLayer;
-
+    
     Vector2 lastPlayerPos;
-    Vector2 playerVelocity;
+    
 
 
-    //List<Vector2> currentPoints;
+
 
 
 
@@ -237,13 +59,14 @@ public class Follow : MonoBehaviour
 
 
     private Rigidbody2D enemyRb;
-    Rigidbody2D playerRb;
+
 
     enum State
     {
         PATROL,
         CHASE,
         SEARCH
+       
     }
 
     State currentState = State.PATROL;
@@ -251,12 +74,18 @@ public class Follow : MonoBehaviour
     void Start()
     {
         enemyRb = GetComponent<Rigidbody2D>();
+        animator = GetComponentInChildren<Animator>();
+        attackBehaviour = GetComponent<EnemyAttackBehaviour>();
+
+
+
+
         GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
 
         if (playerObject != null)
         {
             player = playerObject.transform;
-            playerRb = player.GetComponent<Rigidbody2D>();
+            //playerRb = player.GetComponent<Rigidbody2D>();
         }
         else
         {
@@ -283,9 +112,9 @@ public class Follow : MonoBehaviour
             case State.SEARCH:
                 Search();
                 break;
+            
         }
 
-        playerVelocity = ((Vector2)player.position - lastPlayerPos) / Time.deltaTime;
         lastPlayerPos = player.position;
 
 
@@ -302,26 +131,42 @@ public class Follow : MonoBehaviour
         if (distance > 0.2f)
         {
             waitCounter = 0f;
-
-            /*transform.position = Vector2.MoveTowards(
-                 transform.position,
-                 target.position,
-                 patrolSpeed * Time.deltaTime
-             );*/
             Vector2 direction = (target.position - transform.position).normalized;
 
-            enemyRb.linearVelocity = direction * chaseSpeed;    
+            enemyRb.linearVelocity = direction * patrolSpeed;
+
+
+            lastMoveDirection = direction;
+            animator.SetFloat("InputX", direction.x);
+            animator.SetFloat("InputY", direction.y);
+            animator.SetBool("isWalking", true);
         }
         else
         {
             enemyRb.linearVelocity = Vector2.zero;
-            waitCounter += Time.deltaTime;
 
-            if (waitCounter > waitTime)
+
+            animator.SetFloat("LastInputX", lastMoveDirection.x);
+            animator.SetFloat("LastInputY", lastMoveDirection.y);
+            animator.SetBool("isWalking", false);
+
+
+
+ 
+
+            if (points.Length > 1)
             {
-                currentIndex++;
-                if (currentIndex >= points.Length)
-                    currentIndex = 0;
+                waitCounter += Time.deltaTime;
+
+                if (waitCounter >= waitTime)
+                {
+                    waitCounter = 0f;
+
+                    currentIndex++;
+
+                    if (currentIndex >= points.Length)
+                        currentIndex = 0;
+                }
             }
         }
        
@@ -331,47 +176,84 @@ public class Follow : MonoBehaviour
 
         if (hasLineOfSight && distToPlayer < detectDistance)
         {
-
-                currentState = State.CHASE;
+            currentState = State.CHASE;
         }
-        
-
-
-
-
     }
 
+
+
+
     // ================= CHASE =================
+
     void Chase()
     {
-        Debug.Log("CHASE");
-        
-    
+        // Attack Behaviour đang xử lý đòn đánh
+        if (attackBehaviour != null &&
+            attackBehaviour.IsAttacking)
+            return;
 
-        float dist = Vector2.Distance(transform.position, player.position);
+        float dist = Vector2.Distance(
+            transform.position,
+            player.position
+        );
 
-
-        Debug.Log(dist);
         if (hasLineOfSight && dist < detectDistance)
         {
-            /*transform.position = Vector2.MoveTowards(
-                transform.position,
-                player.position,
-                chaseSpeed * Time.deltaTime
-            );*/
+            // Player đã vào tầm đánh
+            if (attackBehaviour != null && dist <= attackBehaviour.AttackRange)
+            {
+                enemyRb.linearVelocity = Vector2.zero;
+
+                
+
+                // Chỉ bắt đầu khi đã hết cooldown
+                if (attackBehaviour.CanStartAttack)
+                {
+                    animator.SetBool("isWalking", false);
+                    attackBehaviour.StartAttack(player);
+                    
+                }
+                
+                return;
+            }
+
+            // Tiếp tục Chase
             Vector2 direction = (player.position - transform.position).normalized;
 
             enemyRb.linearVelocity = direction * chaseSpeed;
+
+            lastMoveDirection = direction;
+
+            animator.SetFloat("InputX", direction.x);
+            animator.SetFloat("InputY", direction.y);
+
+            animator.SetBool("isWalking", true);
         }
         else
         {
-            // chuyển sang SEARCH
+            enemyRb.linearVelocity = Vector2.zero;
+
+            animator.SetBool("isWalking", false);
+
             currentState = State.SEARCH;
             searchTimer = searchTime;
-
-            //currentPoints = null;------------------------------
         }
     }
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
 
     // ================= SEARCH =================
     bool locktarget = false;
@@ -402,86 +284,11 @@ public class Follow : MonoBehaviour
 
 
 
-        // nếu chưa có điểm → generate + chọn
-        // if (currentPoints == null || currentPoints.Count == 0)
-
-
-
-
-        //currentPoints = losGenerator.GeneratePoints();--------------------
-
-
-
-
-
-
-
-
-        // di chuyển đến targetPoint
-        /*if (currentPoints != null && currentPoints.Count > 0)
-        {
-            Debug.LogError("step 7");
-            transform.position = Vector2.MoveTowards(
-                transform.position,
-                targetPoint,
-                searchSpeed * Time.deltaTime
-            );
-            Debug.LogError("step 8");
-
-
-        }*/
-
-
-
-        
         // ================= CHỌN ĐIỂM =================
         if (locktarget == false)
         {
             
-            ///////////////////////////////////////////////// đoán hướng di chuyển /////////////////////////
-            /* Vector2 ChooseBestPoint(List<Vector2> points, Vector2 enemyPos, Vector2 playerVelocity)
-             {
-                 Vector2 bestPoint = points[0];
-                 float bestScore = float.MaxValue;
-
-                 foreach (Vector2 p in points)
-                 {
-                     float dist = Vector2.Distance(enemyPos, p);
-
-                     Vector2 dirToPoint = (p - enemyPos).normalized;
-                     float dot = Vector2.Dot(dirToPoint, playerVelocity.normalized);
-
-                     float score = dist - dot * 2f;
-
-                     if (score < bestScore)
-                     {
-                         bestScore = score;
-                         bestPoint = p;
-                     }
-                 }
-
-                 return bestPoint;
-             }
-
-
-
-             if (currentPoints.Count > 0)
-             {
-                 Debug.LogError("step 4");
-                 Vector2 playerVelocity1 = playerRb != null ? playerVelocity : Vector2.zero;
-
-
-                 Debug.LogError("step 5");
-
-                 targetPoint = ChooseBestPoint(
-                     currentPoints,
-                     transform.position,
-                     playerVelocity1
-                 );
-
-
-
-             }*/
+           
 
 
 
@@ -508,19 +315,10 @@ public class Follow : MonoBehaviour
                      RaycastHit2D hit = Physics2D.Raycast(
                          transform.position,
                          dir.normalized,
-                         dir.magnitude
-                       
+                         dir.magnitude,
+                         obstacleLayer
                      );
-                
-                    
-
-
-
-
-
-                    
-
-
+            
                     if (hit.collider == null)
                     {
                         float score = distEnemy + distPlayer;
@@ -543,122 +341,77 @@ public class Follow : MonoBehaviour
         if (targetNode != null)
         {
 
-
-            /*transform.position = Vector2.MoveTowards(
-                transform.position,
-                targetNode.Position,
-                searchSpeed * Time.deltaTime
-            );*/
-            //transform.position = targetNode.Position;
-
             Vector2 direction = (targetNode.Position - (Vector2)transform.position).normalized;
 
             enemyRb.linearVelocity = direction * chaseSpeed;
 
+
+            lastMoveDirection = direction;
+            animator.SetFloat("InputX", direction.x);
+            animator.SetFloat("InputY", direction.y);
+            animator.SetBool("isWalking", true);
+
+
             // 3. Nếu tới nơi → reset để chọn node mới
             float dist11 = Vector2.Distance(transform.position, targetNode.Position);
 
-            if (dist11 < 0.2f)
+            if (dist11 < 0.5f)
             {
                 targetNode = null;
                 locktarget = false;
 
                 enemyRb.linearVelocity = Vector2.zero;
+
+
+                animator.SetFloat("LastInputX", lastMoveDirection.x);
+                animator.SetFloat("LastInputY", lastMoveDirection.y);
+                animator.SetBool("isWalking", false);
             }
         }
-
-
-
-        // ================ LOS =================
-
-
     }
+
+    
+
 
     void FixedUpdate()
     {
-        Vector2 dir = (Vector2)player.position - (Vector2)transform.position;
-
-        RaycastHit2D ray = Physics2D.Raycast(
-            transform.position,
-            dir.normalized,
-            dir.magnitude
-        );
+       
+            if (player == null) return;
 
 
-        if (ray.collider != null)
-        {
-            Debug.Log("Hit: " + ray.collider.name);
-        }
-        else
-        {
-            Debug.Log("Hit: NULL");
-        }
+        
 
 
-        // luôn cập nhật mỗi frame
-        if (ray.collider != null && ray.collider.CompareTag("Player"))
-        {
-            hasLineOfSight = true;
-        }
-        else
-        {
-            hasLineOfSight = false;
-        }
 
-        Debug.DrawRay(
-            transform.position,
-            dir,
-            hasLineOfSight ? Color.green : Color.red
-        );
+        Vector2 origin = transform.position;
+            Vector2 dir = (Vector2)player.position - origin;
+
+            RaycastHit2D ray = Physics2D.Raycast(
+                origin,
+                dir.normalized,
+                dir.magnitude,
+                lineOfSightMask
+            );
+
+            if (ray.collider != null)
+            {
+                Debug.Log("Hit: " + ray.collider.name);
+            }
+            else
+            {
+                Debug.Log("Hit: NULL");
+            }
+
+            hasLineOfSight =
+                ray.collider != null && ray.collider.CompareTag("Player");
+
+            Debug.DrawRay(
+                origin,
+                dir,
+                hasLineOfSight ? Color.green : Color.red
+            );
+        
     }
 
 }
-/*void FixedUpdate()
-{
-    Vector2 origin = transform.position;
-    Vector2 dir = (Vector2)player.position - origin;
 
-    //Vector2 dir = ((Vector2)player.position - (Vector2)transform.position).normalized;
-
-    //Vector2 origin = (Vector2)transform.position + dir * 0.5f; // chỉnh số này
-
-
-
-    float distance = dir.magnitude;
-
-    // chỉnh theo collider của enemy
-    float radius = 0.5f;
-
-    RaycastHit2D hit = Physics2D.CircleCast(
-        origin,
-        radius,
-        dir.normalized,
-        distance,
-        obstacleLayer
-
-    );
-
-
-
-
-    if (hit.collider != null)
-    {
-        if (hit.collider.CompareTag("Player"))
-        {
-            hasLineOfSight = true;
-        }
-        else
-        {
-            hasLineOfSight = false;
-        }
-    }
-
-    Debug.DrawRay(
-        origin,
-        dir,
-        hasLineOfSight ? Color.green : Color.red
-    );
-}
-
-
-}*/

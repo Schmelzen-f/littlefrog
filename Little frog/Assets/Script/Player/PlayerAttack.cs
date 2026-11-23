@@ -27,7 +27,7 @@ public class PlayerAttack : MonoBehaviour
         if (collision.CompareTag("Enemy"))
         {
             collision.GetComponent<EnemyHP>()?.TakeDamage(damage);
-            Debug.Log("lam on tru hp di");
+            Debug.Log("Player da tan cong");
         }
         attackCollider.enabled = false;
     }

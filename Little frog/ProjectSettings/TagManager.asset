@@ -11,16 +11,16 @@ TagManager:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Player
   - Water
   - UI
-  - Player
   - Enemy
+  - 
   - Wall
   - Trap
   - AttackHitBox
-  - 
-  - 
+  - IInteractionDectector
+  - Attackarea
   - 
   - 
   - 
@@ -55,6 +55,9 @@ TagManager:
     locked: 0
   - name: Player
     uniqueID: 2830853613
+    locked: 0
+  - name: Enemy
+    uniqueID: 2946394487
     locked: 0
   - name: WalkBehind
     uniqueID: 3924742893

@@ -6,6 +6,7 @@ public class PlayerMovement : MonoBehaviour
 {
     private Animator animator;
     private Rigidbody2D rb;
+    private SpriteRenderer spriteRenderer;
 
     //[SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float walkSpeed = 1.5f;
@@ -35,21 +36,29 @@ public class PlayerMovement : MonoBehaviour
     public PlayerAttack playerattack;
     private bool hasStartedAttack = false;
     public Transform Attackarea;
-  
 
-    enum PlayerState { IDLE, WALK, RUNNING, DASH, ATTACK}
+
+    //KNOCKBACK
+    [SerializeField] private float knockbackForce = 8f;
+    [SerializeField] private float knockbackDuration = 0.25f;
+
+    private float knockbackTimer;
+    private Vector2 knockbackDirection;
+    private bool applyKnockback;
+
+    enum PlayerState { IDLE, WALK, RUNNING, DASH, ATTACK, KNOCKBACK}
 
 
 
     private PlayerState currentState  = PlayerState.IDLE;
     private bool isSprinting = false;
 
-  
+    
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
-            
+        spriteRenderer = GetComponent<SpriteRenderer>();
 
         currentHealth = maxHealth;
         healthBar.SetMaxHealth(maxHealth);
@@ -65,7 +74,7 @@ public class PlayerMovement : MonoBehaviour
             dashCooldownTimer -= Time.deltaTime;
         }
 
-      
+        
 
         switch (currentState)
         {
@@ -88,16 +97,35 @@ public class PlayerMovement : MonoBehaviour
             case PlayerState.ATTACK:
                 Attack();
                 break;
-
+            case PlayerState.KNOCKBACK:
+                Knockback();
+                break;
+            
+                
 
         }
     }
 
-   
 
 
-   
+    public void UDieFuckingIdiot(int damage, Vector2 enemyPosition)
+    {
 
+        currentHealth -= damage;
+
+        spriteRenderer.color = Color.red;
+
+
+        knockbackDirection =
+       ((Vector2)transform.position - enemyPosition).normalized;
+
+        knockbackTimer = knockbackDuration;
+        applyKnockback = true;
+
+        currentState = PlayerState.KNOCKBACK;
+    }
+
+    
 
     void Idle()
     {
@@ -162,6 +190,7 @@ public class PlayerMovement : MonoBehaviour
 
         if (dashTimer <= 0f)
         {
+            Physics2D.IgnoreLayerCollision(3, 6, false);
             if (moveInput == Vector2.zero)
             {
                 currentState = PlayerState.IDLE;
@@ -200,12 +229,57 @@ public class PlayerMovement : MonoBehaviour
 
 
 
+    void Knockback()
+    {
+        knockbackTimer -= Time.deltaTime;
+
+        if (knockbackTimer <= 0f)
+        {
+            rb.linearVelocity = Vector2.zero;
+
+
+            spriteRenderer.color = Color.white;
+
+
+            if (moveInput == Vector2.zero)
+                currentState = PlayerState.IDLE;
+            else if (isSprinting)
+                currentState = PlayerState.RUNNING;
+            else
+                currentState = PlayerState.WALK;
+
+            animator.SetBool("isWalking", moveInput != Vector2.zero);
+        }
+    }
+
+
+
 
     void FixedUpdate()
     {
         if (currentState == PlayerState.DASH) return;
-       
-        switch (currentState)
+
+
+        if (currentState == PlayerState.KNOCKBACK)
+        {
+            if (applyKnockback)
+            {
+                rb.linearVelocity = Vector2.zero;
+
+                rb.AddForce(
+                    knockbackDirection * knockbackForce,
+                    ForceMode2D.Impulse
+                );
+
+                applyKnockback = false;
+            }
+
+            return;
+
+        }
+
+
+            switch (currentState)
         {
             case PlayerState.IDLE:
                 rb.linearVelocity = Vector2.zero;
@@ -279,6 +353,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if (!context.started) return;
 
+        if (currentState == PlayerState.KNOCKBACK) return;
 
         if (dashCooldownTimer > 0f) return;
 
@@ -301,6 +376,7 @@ public class PlayerMovement : MonoBehaviour
         }
 
         currentState = PlayerState.DASH;
+        Physics2D.IgnoreLayerCollision(3, 6, true);
         dashTimer = dashDuration;
 
 
@@ -312,7 +388,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if (!context.started) return;
 
-       
+        if (currentState == PlayerState.KNOCKBACK) return;
 
         currentState = PlayerState.ATTACK;
 

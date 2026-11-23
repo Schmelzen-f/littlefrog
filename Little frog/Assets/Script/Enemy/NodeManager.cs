@@ -40,12 +40,13 @@ public class NodeManager : MonoBehaviour
         
         if (hit.collider == null)
         {
+            Debug.Log("BUG");
             return true;// bug
         }
 
         if(hit.collider.CompareTag("Player"))
         {
-            
+            Debug.Log("NODE da thay player");
             return true;
         }
 
