@@ -14,9 +14,9 @@ public class Follow : MonoBehaviour
     private Animator animator;
     private Vector2 lastMoveDirection = Vector2.down;
 
-
+    //Nhức đầu
     private EnemyAttackBehaviour attackBehaviour;
-
+    private EnemyMovementBehaviour movementBehaviour;
 
 
     [Header("Detect")]
@@ -24,9 +24,9 @@ public class Follow : MonoBehaviour
     [SerializeField] private LayerMask lineOfSightMask;
 
     [Header("Speed")]
-    public float patrolSpeed = 2f;
-    public float chaseSpeed = 4f;
-    public float searchSpeed = 3f;
+    public float patrolSpeed = 1f;
+    public float chaseSpeed = 1.5f;
+    public float searchSpeed = 1.5f;
 
     [Header("Search")]
     public float searchTime = 3f;
@@ -74,9 +74,12 @@ public class Follow : MonoBehaviour
     void Start()
     {
         enemyRb = GetComponent<Rigidbody2D>();
+
         animator = GetComponentInChildren<Animator>();
+
         attackBehaviour = GetComponent<EnemyAttackBehaviour>();
 
+        movementBehaviour = GetComponent<EnemyMovementBehaviour>();
 
 
 
@@ -199,35 +202,66 @@ public class Follow : MonoBehaviour
 
         if (hasLineOfSight && dist < detectDistance)
         {
-            // Player đã vào tầm đánh
-            if (attackBehaviour != null && dist <= attackBehaviour.AttackRange)
+            if (movementBehaviour == null)
             {
                 enemyRb.linearVelocity = Vector2.zero;
-
-                
-
-                // Chỉ bắt đầu khi đã hết cooldown
-                if (attackBehaviour.CanStartAttack)
-                {
-                    animator.SetBool("isWalking", false);
-                    attackBehaviour.StartAttack(player);
-                    
-                }
-                
+                animator.SetBool("isWalking", false);
                 return;
             }
 
-            // Tiếp tục Chase
-            Vector2 direction = (player.position - transform.position).normalized;
+            float attackRange = attackBehaviour != null
+                ? attackBehaviour.AttackRange
+                : 0f;
 
-            enemyRb.linearVelocity = direction * chaseSpeed;
+            // Kiểm tra đã ở vị trí thích hợp để tấn công chưa
+            if (movementBehaviour.IsInAttackPosition(player, attackRange) && attackBehaviour != null && attackBehaviour.CanStartAttack)
+            {
+                enemyRb.linearVelocity = Vector2.zero;
 
-            lastMoveDirection = direction;
+                animator.SetFloat("LastInputX", lastMoveDirection.x);
+                animator.SetFloat("LastInputY", lastMoveDirection.y);
+                animator.SetBool("isWalking", false);
 
-            animator.SetFloat("InputX", direction.x);
-            animator.SetFloat("InputY", direction.y);
+                attackBehaviour.StartAttack(player);
+               
+                return;
+            }
 
-            animator.SetBool("isWalking", true);
+            // Lấy hướng di chuyển từ MovementBehaviour
+            Vector2 direction =
+                movementBehaviour.GetMovementDirection(player, attackRange);
+         
+            if (direction.sqrMagnitude > 0.001f)
+            {
+                direction.Normalize();
+
+                enemyRb.linearVelocity = direction * chaseSpeed;
+
+                // Cập nhật hướng nhìn
+                Vector2 facingDirection =
+                    movementBehaviour.GetFacingDirection(player);
+
+                if (facingDirection.sqrMagnitude > 0.001f)
+                {
+                    facingDirection.Normalize();
+
+                    lastMoveDirection = facingDirection;
+
+                    animator.SetFloat("InputX", facingDirection.x);
+                    animator.SetFloat("InputY", facingDirection.y);
+                }
+
+                animator.SetBool("isWalking", true);
+            }
+            else
+            {
+                enemyRb.linearVelocity = Vector2.zero;
+
+                animator.SetFloat("LastInputX", lastMoveDirection.x);
+                animator.SetFloat("LastInputY", lastMoveDirection.y);
+
+                animator.SetBool("isWalking", false);
+            }
         }
         else
         {
@@ -241,7 +275,7 @@ public class Follow : MonoBehaviour
     }
 
 
-  
+
 
 
 
